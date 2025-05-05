@@ -1,0 +1,215 @@
+---
+title: "Class Project"
+format: pdf
+editor: visual
+---
+
+```{r}
+df <- read_excel("IDMC_Disasters.xlsx")
+
+```
+
+```{r}
+library(tidyverse)
+
+```
+
+```{r}
+# Define African countries
+african_countries <- c("Algeria", "Angola", "Benin", "Botswana", "Burkina Faso", "Burundi", "Cabo Verde",
+                       "Cameroon", "Central African Republic", "Chad", "Comoros", "Congo", "DR Congo", 
+                       "Djibouti", "Egypt", "Equatorial Guinea", "Eritrea", "Eswatini", "Ethiopia", 
+                       "Gabon", "Gambia", "Ghana", "Guinea", "Guinea-Bissau", "Kenya", "Lesotho", "Liberia",
+                       "Libya", "Madagascar", "Malawi", "Mali", "Mauritania", "Mauritius", "Morocco", 
+                       "Mozambique", "Namibia", "Niger", "Nigeria", "Rwanda", "Sao Tome and Principe", 
+                       "Senegal", "Seychelles", "Sierra Leone", "Somalia", "South Africa", "South Sudan", 
+                       "Sudan", "Tanzania", "Togo", "Tunisia", "Uganda", "Zambia", "Zimbabwe")
+
+# Filter for Africa and years >= 1990
+africa_df <- df %>%
+  filter(Name %in% african_countries, Year >= 2008)
+
+# Summarize total displacements by year and type
+africa_summary <- africa_df %>%
+  group_by(Year) %>%
+  summarise(
+    Conflict_Displacement = sum(`Conflict Internal Displacements`, na.rm = TRUE),
+    Disaster_Displacement = sum(`Disaster Internal Displacements`, na.rm = TRUE)
+  ) %>%
+  pivot_longer(cols = c("Conflict_Displacement", "Disaster_Displacement"),
+               names_to = "Displacement_Type", values_to = "Total_Displaced")
+
+# Plot
+ggplot(africa_summary, aes(x = Year, y = Total_Displaced, color = Displacement_Type)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  scale_color_manual(values = c("Conflict_Displacement" = "#F28E2B",  # orange
+                                "Disaster_Displacement" = "#4E79A7")) +  # blue
+  labs(title = "Internal Displacement in Africa: Conflict vs. Disaster",
+       x = NULL, 
+       y = NULL,
+       color = NULL) +
+  scale_y_continuous(
+    breaks = seq(0, 10000000, by = 2500000),
+    labels = scales::label_number(scale_cut = scales::cut_short_scale())
+  ) +
+  scale_x_continuous(breaks = seq(2008, 2023, 2)) +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5, margin = margin(b = 10)),
+    legend.position = "bottom",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    plot.margin = margin(t = 30, r = 50, b = 15, l = 15)  # top, right, bottom, left
+  )
+
+
+```
+
+```{r}
+# Define regional groupings
+region_map <- tibble(
+  Name = c("Nigeria", "Ghana", "Senegal", "Togo", "Benin", "Burkina Faso", "Mali", "Niger", "Gambia", "Guinea", "Guinea-Bissau", "Liberia", "Sierra Leone", "Cabo Verde"),
+  Region = "West Africa"
+) %>%
+  add_row(Name = c("Kenya", "Uganda", "Tanzania", "Ethiopia", "Somalia", "South Sudan", "Rwanda", "Burundi", "Djibouti", "Eritrea"),
+          Region = "East Africa") %>%
+  add_row(Name = c("DR Congo", "Central African Republic", "Congo", "Cameroon", "Gabon", "Chad", "Equatorial Guinea", "Sao Tome and Principe"),
+          Region = "Central Africa") %>%
+  add_row(Name = c("Algeria", "Egypt", "Libya", "Morocco", "Sudan", "Tunisia"),
+          Region = "North Africa") %>%
+  add_row(Name = c("Angola", "Botswana", "Eswatini", "Lesotho", "Malawi", "Mauritius", "Mozambique", "Namibia", "South Africa", "Zambia", "Zimbabwe", "Madagascar"),
+          Region = "Southern Africa")
+
+# Join with main data
+africa_region_df <- africa_df %>%
+  left_join(region_map, by = "Name") %>%
+  filter(!is.na(Region))  # drop countries not assigned to a region
+
+# Summarize by region
+regional_summary <- africa_region_df %>%
+  group_by(Year, Region) %>%
+  summarise(
+    Conflict = sum(`Conflict Internal Displacements`, na.rm = TRUE),
+    Disaster = sum(`Disaster Internal Displacements`, na.rm = TRUE)
+  ) %>%
+  pivot_longer(cols = c("Conflict", "Disaster"), names_to = "Displacement_Type", values_to = "Total_Displaced")
+
+ggplot(regional_summary, aes(x = Year, y = Total_Displaced, color = Displacement_Type)) +
+  geom_line(size = 1) +
+  facet_wrap(~ Region, scales = "free_y") +
+  labs(title = "Internal Displacement by Region and Cause (Africa, 1990–2023)",
+       x = "Year", y = "Number Displaced",
+       color = "Cause") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8), # Rotate year labels
+    strip.text = element_text(size = 10),                       # Facet titles size
+    plot.title = element_text(size = 14, face = "bold")
+  ) +
+  scale_x_continuous(breaks = seq(1990, 2023, by = 5))  # Set year breaks every 5 years
+```
+
+```{r}
+ggplot(stock_flow_summary, aes(x = Year, y = Count, color = Type)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  scale_color_manual(values = c("Conflict_Stock" = "#F28E2B",  # orange
+                                "Conflict_Flow" = "#4E79A7")) +  # blue
+  labs(title = "Conflict Displacement in Africa: Stock vs. Flow",
+       x = NULL, 
+       y = NULL,
+       color = NULL) +
+  scale_y_continuous(
+    breaks = seq(0, 25000000, by = 5000000),
+    labels = scales::label_number(scale_cut = scales::cut_short_scale())
+  ) +
+  scale_x_continuous(breaks = seq(2008, 2023, 2)) +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    legend.position = "bottom",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    plot.margin = margin(t = 20, r = 50, b = 20, l = 20)  # ⬅️ wider right margin
+  )
+
+
+```
+
+```{r}
+library(sf)
+library(ggplot2)
+library(dplyr)
+library(rnaturalearth)         
+library(rnaturalearthdata)
+```
+
+```{r}
+install.packages(c("rnaturalearth", "rnaturalearthdata"))
+
+```
+
+```{r}
+# Step 1: Load shapefile of world countries
+africa_map <- ne_countries(scale = "medium", returnclass = "sf") %>%
+  filter(region_un == "Africa")
+
+# Step 2: Assign African regions manually
+region_map <- c(
+  "Algeria" = "North Africa", "Egypt" = "North Africa", "Libya" = "North Africa",
+  "Morocco" = "North Africa", "Tunisia" = "North Africa", "Sudan" = "North Africa",
+
+  "Nigeria" = "West Africa", "Ghana" = "West Africa", "Senegal" = "West Africa",
+  "Côte d'Ivoire" = "West Africa", "Mali" = "West Africa", "Burkina Faso" = "West Africa",
+  "Niger" = "West Africa", "Guinea" = "West Africa", "Togo" = "West Africa",
+  "Benin" = "West Africa", "Liberia" = "West Africa", "Sierra Leone" = "West Africa",
+  "The Gambia" = "West Africa", "Guinea-Bissau" = "West Africa", "Mauritania" = "West Africa",
+  "Cape Verde" = "West Africa",
+
+  "Ethiopia" = "East Africa", "Kenya" = "East Africa", "Uganda" = "East Africa",
+  "Tanzania" = "East Africa", "South Sudan" = "East Africa", "Somalia" = "East Africa",
+  "Eritrea" = "East Africa", "Rwanda" = "East Africa", "Burundi" = "East Africa",
+  "Djibouti" = "East Africa", "Malawi" = "East Africa", "Mozambique" = "East Africa",
+  "Madagascar" = "East Africa",
+
+  "Cameroon" = "Central Africa", "Central African Republic" = "Central Africa",
+  "Chad" = "Central Africa", "Republic of Congo" = "Central Africa", 
+  "Democratic Republic of the Congo" = "Central Africa", "Gabon" = "Central Africa",
+  "Equatorial Guinea" = "Central Africa", "Angola" = "Central Africa",
+  "Sao Tome and Principe" = "Central Africa",
+
+  "South Africa" = "Southern Africa", "Namibia" = "Southern Africa",
+  "Botswana" = "Southern Africa", "Zimbabwe" = "Southern Africa",
+  "Zambia" = "Southern Africa", "Lesotho" = "Southern Africa",
+  "Eswatini" = "Southern Africa"
+)
+
+# Step 3: Create a region column
+africa_map <- africa_map %>%
+  mutate(Region = region_map[name]) %>%
+  filter(!is.na(Region))  # Remove unassigned countries
+
+# Step 4: Plot the map
+ggplot(africa_map) +
+  geom_sf(aes(fill = Region), color = "black", size = 0.2) +
+  scale_fill_brewer(palette = "Set3") +
+  labs(title = "Displacement by Region in Africa (2008–2023)", fill = "Region") +
+  guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +  # Forces 2-row legend
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+    legend.position = "bottom",
+    legend.text = element_text(size = 10),
+    legend.key.width = unit(1.4, "cm"),  # wider keys
+    plot.margin = margin(t = 10, r = 20, b = 40, l = 20),  # ⬅️ extra bottom margin!
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank()
+  )
+
+```

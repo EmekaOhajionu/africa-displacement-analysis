@@ -1,0 +1,39 @@
+---
+title: "ACLED Data"
+format: pdf
+editor: visual
+---
+
+```{r}
+install.packages("ggspatial")
+```
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(sf)
+library(ggspatial)
+```
+
+```{r}
+# Load ACLED conflict CSV
+acled <- read_csv("Africa_1997-2025_Apr11.csv")
+
+# Filter for only 2008–2023, and valid coordinates
+acled <- acled %>%
+  filter(year >= 2008, !is.na(latitude), !is.na(longitude))
+
+# Convert to spatial
+acled_sf <- st_as_sf(acled, coords = c("longitude", "latitude"), crs = 4326)
+
+# Plot heatmap
+ggplot() +
+  geom_sf(data = africa_map, fill = "grey95", color = "black") +
+  stat_density2d(data = acled, aes(x = longitude, y = latitude, fill = ..level..), 
+                 geom = "polygon", alpha = 0.5, color = NA, bins = 30) +
+  scale_fill_viridis_c(option = "C") +
+  labs(title = "Conflict Density in Africa (2008–2023)", fill = "Density") +
+  theme_minimal()
+
+```
